@@ -8,17 +8,11 @@ import Icon from 'react-native-vector-icons/Ionicons'
 
 
 const Dashboard = ({ navigation }) => {
-  const handleNavPress = (screen) => {
-    // Log to check if the correct screen is being navigated to
-    console.log(`Navigating to ${screen}`);
-    navigation.navigate(screen);
-  };
-
   return (
     <DashboardContainer>
       <NavContainer>
         {DashboardNavConfig.map((item) => (
-          <NavItem key={item.id} onPress={() => handleNavPress(item.screen)}>
+          <NavItem key={item.id}>
             <NavLabel>{item.label}</NavLabel>
           </NavItem>
         ))}
