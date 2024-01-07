@@ -1,3 +1,4 @@
+
 import React, {useState} from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
@@ -84,14 +85,14 @@ const AllOrders = () => {
       <FlatList
         data={orders}
         renderItem={renderOrderItem}
-        keyExtractor={(item) => item.orderNumber}
+        keyExtractor={(item) => item.id}
       />
     </Container>
   );
 };
 
 const Container = styled.View({
-  width: '100%',
+  width: "100%",
   flex: 1,
   padding: 16,
 });
@@ -102,18 +103,23 @@ const Header = styled.View({
   padding: '10px 10px',
 });
 
-const HeaderText = styled.Text({
-  fontWeight: 'bold',
-  flex: 1,
-  textAlign: 'left',
+const Row = styled.View({
+  flexDirection: "row",
+  marginBottom: 8,
+  padding: "10px 10px",
 });
 
-const Row = styled.View({
-  flexDirection: 'row',
+const HeaderText = styled.Text({
+  fontWeight: "bold",
+  flex: 1,
+  textAlign: "left",
+});
+
 });
 
 const Cell = styled.Text({
   flex: 1,
+
   textAlign: 'left',
   padding: '15px 10px',
   border: '1px solid #D9D9D9',
@@ -131,6 +137,9 @@ const ExpandedContent = styled.View({
 
 const ExpandedText = styled.Text({
   fontWeight: 'bold',
+  textAlign: "left",
+  padding: "10px 10px",
+  border: "1px solid #D9D9D9",
 });
 
 export default AllOrders;
