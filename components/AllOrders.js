@@ -1,8 +1,10 @@
-import React from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import React, {useState} from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import styled from 'styled-components/native';
 
 const AllOrders = () => {
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
   const orders = [
     {
       customerName: 'Mohsin Miah',
@@ -35,15 +37,37 @@ const AllOrders = () => {
     // Add more orders as needed
   ];
 
-  const renderOrderItem = ({ item }) => (
-    <Row>
-      <Cell>{item.customerName}</Cell>
-      <Cell>{item.orderNumber}</Cell>
-      <Cell>{item.address}</Cell>
-      <Cell>{item.orderType}</Cell>
-      <Cell>{item.contactNumber}</Cell>
-    </Row>
-  );
+  const renderOrderItem = ({ item, index }) => {
+    const isRowSelected = selectedOrder === index;
+
+    const handleRowPress = () => {
+      setSelectedOrder(isRowSelected ? null : index);
+    };
+
+    return (
+      <>
+        <TouchableOpacity onPress={handleRowPress}>
+          <Row>
+            <Cell>{item.customerName}</Cell>
+            <Cell>{item.orderNumber}</Cell>
+            <Cell>{item.address}</Cell>
+            <Cell>{item.orderType}</Cell>
+            <Cell>{item.contactNumber}</Cell>
+          </Row>
+        </TouchableOpacity>
+
+        {/* Render expanded content if the row is selected */}
+        {isRowSelected && (
+          <ExpandedContent>
+            <ExpandedText>Order Type: {item.orderType}</ExpandedText>
+            <ExpandedText></ExpandedText>
+
+            
+          </ExpandedContent>
+        )}
+      </>
+    );
+  };
 
   return (
     <Container>
@@ -67,34 +91,46 @@ const AllOrders = () => {
 };
 
 const Container = styled.View({
-
   width: '100%',
-    flex: 1,
-    padding: 16,
-})
+  flex: 1,
+  padding: 16,
+});
 
 const Header = styled.View({
-    flexDirection: 'row',
-    marginBottom: 8,
-    padding: '10px 10px',
-})
+  flexDirection: 'row',
+  marginBottom: 8,
+  padding: '10px 10px',
+});
 
 const HeaderText = styled.Text({
-    fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'left',
-})
+  fontWeight: 'bold',
+  flex: 1,
+  textAlign: 'left',
+});
 
 const Row = styled.View({
-    flexDirection: 'row',
-    
-})
+  flexDirection: 'row',
+});
 
 const Cell = styled.Text({
-    flex: 1,
-    textAlign: 'left',
-    padding: '10px 10px',
-    border: '1px solid #D9D9D9'
-})
+  flex: 1,
+  textAlign: 'left',
+  padding: '15px 10px',
+  border: '1px solid #D9D9D9',
+});
+
+const ExpandedContent = styled.View({
+  backgroundColor: '#EFEFEF',
+  padding: 16,
+  border: '1px solid #D9D9D9',
+  borderBottomLeftRadius: 20,
+  borderBottomRightRadius: 20,
+  height: 300,
+  marginBottom: 10
+});
+
+const ExpandedText = styled.Text({
+  fontWeight: 'bold',
+});
 
 export default AllOrders;
