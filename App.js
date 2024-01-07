@@ -74,7 +74,7 @@ const GlowingDot = styled.View({
   marginLeft: 5, // Adjust the spacing between dot and text
   shadowColor: "green",
   shadowOffset: { width: 0, height: 0 },
-  shadowOpacity: 1,
+  shadowOpacity: '1px',
   shadowRadius: 5,
 });
 
