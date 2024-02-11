@@ -43,7 +43,7 @@ const Dashboard = ({ navigation }) => {
       const changes = snapshot.docChanges();
       const filteredOrders = data.filter(filterFunc);
       setOrders(filteredOrders);
-      console.log("changes => ", changes[0].doc.data())
+      // console.log("changes => ", changes[0].doc.data())
     });
 
     return () => unsubscribe();

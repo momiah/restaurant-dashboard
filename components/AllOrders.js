@@ -21,6 +21,9 @@ const AllOrders = ({ orders }) => {
       // console.log("selectedRow", isRowSelected);
     };
 
+    const numberOfItems = item.orderItems.map(item => item.quantity).reduce((currentValue, accumulator) => currentValue + accumulator, 0)
+    console.log('number of itwems ', numberOfItems)
+
     return (
       <>
         <Row onPressIn={handleRowPress}>
@@ -73,18 +76,20 @@ const AllOrders = ({ orders }) => {
             <OrderContainer>
               <NumberOfItemContainer>
                 <Text style={{fontWeight: 'bold'}}>Number of Items</Text>
-                <Text style={{fontWeight: 'bold'}}>{item.orderItems.length}</Text>
+                <Text style={{fontWeight: 'bold'}}>{numberOfItems}</Text>
               </NumberOfItemContainer>
               {item.orderItems.map((orderItem, index) => {
                 const protein = !orderItem.protein
                   ? "NO PROTEIN"
                   : orderItem.protein.toUpperCase();
 
+
+
                 return (
                   <View key={index} style={{ marginBottom: 10 }}>
                     <OrderItemContainer>
-                      <OrderItem>{orderItem.name}</OrderItem>
-                      <OrderItemPrice>£{orderItem.price}</OrderItemPrice>
+                      <OrderItem>{orderItem.name}  x{orderItem.quantity}</OrderItem>
+                      <OrderItemPrice>£{orderItem.price * orderItem.quantity}</OrderItemPrice>
                     </OrderItemContainer>
 
                     {orderItem.extras && orderItem.extras.length > 0 ? (
@@ -100,9 +105,7 @@ const AllOrders = ({ orders }) => {
                           }}
                         >
                           <OrderExtras>{orderItem.extras[0].type}</OrderExtras>
-                          <OrderExtras>
-                            £{orderItem.extras[0].price.toFixed(2)}
-                          </OrderExtras>
+            
                         </View>
                       </ExtrasContainer>
                     ) : (
