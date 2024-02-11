@@ -38,27 +38,43 @@ const AllOrders = ({ orders }) => {
                 Order Type:{" "}
                 <Text style={{ fontWeight: "normal" }}>{item.orderType}</Text>
               </ExpandedText>
-              <ExpandedText>
-                Address:{" "}
-                <Text style={{ fontWeight: "normal" }}>
-                  {item.address == "" ? "No Address" : item.address}
-                </Text>
-              </ExpandedText>
+              {item.address && (
+                <ExpandedText>
+                  Address:{" "}
+                  <Text
+                    style={{
+                      fontWeight: "normal",
+                      color: !item.address ? "#4B4B4B" : "black",
+                    }}
+                  >
+                    {item.address == "" ? "No address" : item.address}
+                  </Text>
+                </ExpandedText>
+              )}
+
               <ExpandedText>
                 Contact Number:{" "}
                 <Text style={{ fontWeight: "normal" }}>
-                  {item.address == "" ? "No Address" : item.address}
+                  {item.contactNumber == ""
+                    ? "No Contact Number"
+                    : item.contactNumber}
                 </Text>
               </ExpandedText>
-              <ExpandedText>
-                Notes:{" "}
-                <Text style={{ fontWeight: "normal" }}>
-                  {item.address == "" ? "No Address" : item.address}
-                </Text>
-              </ExpandedText>
+              {item.notes && (
+                <ExpandedText>
+                  Notes:{" "}
+                  <Text style={{ fontWeight: "normal" }}>
+                    {item.address == "" ? "No Notes" : item.notes}
+                  </Text>
+                </ExpandedText>
+              )}
             </InfoContainer>
 
             <OrderContainer>
+              <NumberOfItemContainer>
+                <Text style={{fontWeight: 'bold'}}>Number of Items</Text>
+                <Text style={{fontWeight: 'bold'}}>{item.orderItems.length}</Text>
+              </NumberOfItemContainer>
               {item.orderItems.map((orderItem, index) => {
                 const protein = !orderItem.protein
                   ? "NO PROTEIN"
@@ -193,6 +209,17 @@ const OrderItemContainer = styled.View({
   justifyContent: "space-between",
   alignItems: "center",
   paddingRight: 10,
+});
+
+const NumberOfItemContainer = styled.View({
+  display: "flex",
+  flexDirection: "row",
+  justifyContent: "space-between",
+  paddingRight: 10,
+  marginBottom: 20,
+  paddingBottom: 10,
+  borderBottomColor: "#D9D9D9",
+  borderBottomWidth: 1,
 });
 
 const OrderItem = styled.Text({
