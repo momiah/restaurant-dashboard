@@ -57,15 +57,24 @@ const AllOrders = ({ orders }) => {
                 </Text>
               </ExpandedText>
             </InfoContainer>
+
             <OrderContainer>
               {item.orderItems.map((orderItem, index) => {
-                console.log("orderItem", orderItem);
-
+                console.log("orderItem🚫🚫🚫🚫🚫🚫", orderItem.protein);
+                const protein = orderItem.protein ? orderItem.protein.toUpperCase() : 'NO PROTEIN'
                 return (
                   <View key={index}>
                     <OrderItem>{orderItem.name}</OrderItem>
+
                     {orderItem.extras && orderItem.extras.length > 0 ? (
-                      <OrderExtras key={index}>{orderItem.extras[0].type}</OrderExtras>
+                      <ExtrasContainer>
+                        <OrderExtras style={{fontWeight: 'bold'}}>
+                          {protein}
+                        </OrderExtras>
+                        <OrderExtras>
+                          {orderItem.extras[0].type}
+                        </OrderExtras>
+                      </ExtrasContainer>
                     ) : (
                       <Text></Text>
                     )}
@@ -153,18 +162,27 @@ const InfoContainer = styled.View({
 const OrderContainer = styled.View({
   border: "1px solid #D9D9D9",
   width: "70%",
-  padding: 10
+  padding: 10,
 });
 
 const OrderItem = styled.Text({
   marginBottom: 10,
   fontSize: 15,
-  fontWeight: 'bold'
+  fontWeight: "bold",
+});
+
+const ExtrasContainer = styled.View({
+  borderLeftWidth: 1,
+  borderColor: "#BBBBBB",
+  padding: 10,
+  marginLeft: 15,
+  
 })
 const OrderExtras = styled.Text({
   marginBottom: 10,
+  marginTop: 10,
   fontSize: 10,
 
-})
+});
 
 export default AllOrders;
