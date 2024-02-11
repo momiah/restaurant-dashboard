@@ -11,7 +11,7 @@ import { onSnapshot, getDocs, collection } from "firebase/firestore";
 const Dashboard = ({ navigation }) => {
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState('allOrders');
-  console.log({filter})
+
 
   const filterFunc = (order) => {
     const temp = ["liveOrders", "completedOrders", "stats", "allOrders"]

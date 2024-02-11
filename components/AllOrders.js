@@ -13,12 +13,12 @@ const AllOrders = ({ orders }) => {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const renderOrderItem = ({ item, index }) => {
-    console.log(item);
+    // console.log(item);
     const isRowSelected = selectedOrder === index;
 
     const handleRowPress = () => {
       setSelectedOrder(isRowSelected ? null : index);
-      console.log("selectedRow", isRowSelected);
+      // console.log("selectedRow", isRowSelected);
     };
 
     return (
@@ -60,28 +60,44 @@ const AllOrders = ({ orders }) => {
 
             <OrderContainer>
               {item.orderItems.map((orderItem, index) => {
-                console.log("orderItem🚫🚫🚫🚫🚫🚫", orderItem.protein);
-                const protein = orderItem.protein ? orderItem.protein.toUpperCase() : 'NO PROTEIN'
+                // console.log('order item🚫', orderItem)
+
+                const protein = !orderItem.protein
+                  ? "NO PROTEIN"
+                  : orderItem.protein.toUpperCase();
+                console.log("rrr🙏", protein);
                 return (
-                  <View key={index}>
+                  <View key={index} style={{marginBottom: 10}}>
                     <OrderItem>{orderItem.name}</OrderItem>
 
                     {orderItem.extras && orderItem.extras.length > 0 ? (
                       <ExtrasContainer>
-                        <OrderExtras style={{fontWeight: 'bold'}}>
+                        <OrderProtein style={{ fontWeight: "bold" }}>
                           {protein}
-                        </OrderExtras>
-                        <OrderExtras>
-                          {orderItem.extras[0].type}
-                        </OrderExtras>
+                        </OrderProtein>
+                        <View
+                          style={{
+                            display: "flex",
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                          }}
+                        >
+                          <OrderExtras>{orderItem.extras[0].type}</OrderExtras>
+                          <OrderExtras>
+                            £{orderItem.extras[0].price.toFixed(2)}
+                          </OrderExtras>
+                        </View>
                       </ExtrasContainer>
                     ) : (
-                      <Text></Text>
+                      <NoExtrasContainer>
+                        <OrderProtein> {protein}</OrderProtein>
+                      </NoExtrasContainer>
                     )}
                   </View>
                 );
               })}
             </OrderContainer>
+            <CustomerProfile></CustomerProfile>
           </ExpandedContent>
         )}
       </>
@@ -161,7 +177,12 @@ const InfoContainer = styled.View({
 
 const OrderContainer = styled.View({
   border: "1px solid #D9D9D9",
-  width: "70%",
+  width: "35%",
+  padding: 10,
+});
+const CustomerProfile = styled.View({
+  border: "1px solid #D9D9D9",
+  width: "35%",
   padding: 10,
 });
 
@@ -174,15 +195,29 @@ const OrderItem = styled.Text({
 const ExtrasContainer = styled.View({
   borderLeftWidth: 1,
   borderColor: "#BBBBBB",
-  padding: 10,
+  padding: "0px 10px 10px",
   marginLeft: 15,
-  
-})
+});
+const NoExtrasContainer = styled.View({
+  borderLeftWidth: 1,
+  borderColor: "#BBBBBB",
+  padding: "0px 10px 0px",
+  marginLeft: 15,
+});
 const OrderExtras = styled.Text({
   marginBottom: 10,
   marginTop: 10,
   fontSize: 10,
-
+  display: "flex",
+  justifyContent: "space-between",
+});
+const OrderProtein = styled.Text({
+  marginBottom: 10,
+  marginTop: 10,
+  fontSize: 10,
+  display: "flex",
+  justifyContent: "space-between",
+  fontWeight: "bold",
 });
 
 export default AllOrders;
