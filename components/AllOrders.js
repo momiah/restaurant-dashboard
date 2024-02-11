@@ -230,6 +230,7 @@ const OrderItem = styled.Text({
 const OrderItemPrice = styled.Text({
   fontSize: 12,
   fontWeight: "bold",
+  paddingBottom: 10
 });
 
 const ExtrasContainer = styled.View({
