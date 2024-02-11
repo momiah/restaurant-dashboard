@@ -60,15 +60,16 @@ const AllOrders = ({ orders }) => {
 
             <OrderContainer>
               {item.orderItems.map((orderItem, index) => {
-                // console.log('order item🚫', orderItem)
-
                 const protein = !orderItem.protein
                   ? "NO PROTEIN"
                   : orderItem.protein.toUpperCase();
-                console.log("rrr🙏", protein);
+
                 return (
-                  <View key={index} style={{marginBottom: 10}}>
-                    <OrderItem>{orderItem.name}</OrderItem>
+                  <View key={index} style={{ marginBottom: 10 }}>
+                    <OrderItemContainer>
+                      <OrderItem>{orderItem.name}</OrderItem>
+                      <OrderItemPrice>£{orderItem.price}</OrderItemPrice>
+                    </OrderItemContainer>
 
                     {orderItem.extras && orderItem.extras.length > 0 ? (
                       <ExtrasContainer>
@@ -186,9 +187,21 @@ const CustomerProfile = styled.View({
   padding: 10,
 });
 
+const OrderItemContainer = styled.View({
+  display: "flex",
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  paddingRight: 10,
+});
+
 const OrderItem = styled.Text({
   marginBottom: 10,
   fontSize: 15,
+  fontWeight: "bold",
+});
+const OrderItemPrice = styled.Text({
+  fontSize: 12,
   fontWeight: "bold",
 });
 
