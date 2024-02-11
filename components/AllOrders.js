@@ -192,7 +192,7 @@ const InfoContainer = styled.View({
   width: "30%",
 });
 
-const OrderContainer = styled.View({
+const OrderContainer = styled.ScrollView({
   border: "1px solid #D9D9D9",
   width: "35%",
   padding: 10,
