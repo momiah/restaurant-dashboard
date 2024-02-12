@@ -22,7 +22,6 @@ const AllOrders = ({ orders }) => {
     };
 
     const numberOfItems = item.orderItems.map(item => item.quantity).reduce((currentValue, accumulator) => currentValue + accumulator, 0)
-    console.log('number of itwems ', numberOfItems)
 
     return (
       <>
@@ -30,7 +29,7 @@ const AllOrders = ({ orders }) => {
           <Cell>{item.name}</Cell>
           <Cell>{item.id.slice(-5).toUpperCase()}</Cell>
           <Cell>{item.orderType}</Cell>
-          <Cell>£{item.total}</Cell>
+          <Cell>£{item.total.toFixed(2)}</Cell>
         </Row>
 
         {/* Render expanded content if the row is selected */}
@@ -82,8 +81,6 @@ const AllOrders = ({ orders }) => {
                 const protein = !orderItem.protein
                   ? "NO PROTEIN"
                   : orderItem.protein.toUpperCase();
-
-
 
                 return (
                   <View key={index} style={{ marginBottom: 10 }}>
@@ -180,7 +177,7 @@ const ExpandedContent = styled.View({
   border: "1px solid #D9D9D9",
   borderBottomLeftRadius: 20,
   borderBottomRightRadius: 20,
-  height: 500,
+  minHeight: 500,
   marginBottom: 15,
 });
 

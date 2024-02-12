@@ -11,7 +11,7 @@ import { onSnapshot, getDocs, collection } from "firebase/firestore";
 const Dashboard = ({ navigation }) => {
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState('allOrders');
-
+  const [showPopup, setShowPopup] = useState(false);
 
   const filterFunc = (order) => {
     const temp = ["liveOrders", "completedOrders", "stats", "allOrders"]
@@ -43,14 +43,31 @@ const Dashboard = ({ navigation }) => {
       const changes = snapshot.docChanges();
       const filteredOrders = data.filter(filterFunc);
       setOrders(filteredOrders);
-      // console.log("changes => ", changes[0].doc.data())
+      console.log("changes => ", changes[0].doc.data())
+      if (changes.length > 0 && changes[0].type === 'added') {
+        setShowPopup(true);
+      }
     });
 
     return () => unsubscribe();
   }, [])
 
+  const handlePopupTap = () => {
+
+    setShowPopup(false);
+    console.log('tapped', showPopup)
+  };
+
   return (
     <DashboardContainer>
+       {showPopup && (
+        <PopupContainer onPress={handlePopupTap}>
+          <PopupContent>
+            <Text style={{fontSize: 50, color: 'white'}}>New Order Received!</Text>
+            <Text style={{fontSize: 20, color: 'white'}}>Tap to close</Text>
+          </PopupContent>
+        </PopupContainer>
+      )}
       <NavContainer>
         {DashboardNavConfig.map((item) => (
           <NavItem key={item.id} onPress={() => setFilter(item.id)}>
@@ -78,6 +95,24 @@ const DashboardContainer = styled.View({
   flexDirection: 'row',
   flex: 1
 })
+
+const PopupContainer = styled.TouchableOpacity({
+  position: 'absolute',
+ width: '90%',
+ height: '90%',
+ left: '5%',
+  backgroundColor: 'rgba(0, 30, 0, 0.9)',
+  padding: '20px',
+  borderRadius: '10px',
+  zIndex: 10
+})
+
+const PopupContent = styled.View({
+  display: 'flex',
+  height: '100%',
+  alignItems: 'center',
+  justifyContent: 'center'
+});
 
 const NavItem = styled.TouchableOpacity({
   margin: 0,
