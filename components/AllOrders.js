@@ -81,12 +81,12 @@ const AllOrders = ({ orders }) => {
                 const protein = !orderItem.protein
                   ? "NO PROTEIN"
                   : orderItem.protein.toUpperCase();
-
+                const itemPrice = orderItem.price * orderItem.quantity
                 return (
                   <View key={index} style={{ marginBottom: 10 }}>
                     <OrderItemContainer>
                       <OrderItem>{orderItem.name}  x{orderItem.quantity}</OrderItem>
-                      <OrderItemPrice>£{orderItem.price * orderItem.quantity}</OrderItemPrice>
+                      <OrderItemPrice>£{itemPrice.toFixed(2)}</OrderItemPrice>
                     </OrderItemContainer>
 
                     {orderItem.extras && orderItem.extras.length > 0 ? (

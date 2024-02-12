@@ -7,12 +7,45 @@ import AllOrders from "../components/AllOrders";
 import Icon from 'react-native-vector-icons/Ionicons'
 import { db } from "../config/firebase.config";
 import { onSnapshot, getDocs, collection } from "firebase/firestore";
+import { Audio } from 'expo-av';
 
 const Dashboard = ({ navigation }) => {
   const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState('allOrders');
   const [showPopup, setShowPopup] = useState(false);
   const pulseValue = new Animated.Value(1);
+
+  const [sound, setSound] = useState();
+
+  useEffect(() => {
+    // Load the sound file
+    const loadSound = async () => {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/security-alarm-63578.mp3')
+      );
+      setSound(sound);
+    };
+
+    loadSound();
+
+    // Clean up the sound
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (showPopup && sound) {
+      // Play the sound when the popup is visible
+      sound.playAsync();
+    } else if (!showPopup && sound) {
+      // Stop the sound when the popup is closed
+      sound.stopAsync();
+    }
+  }, [showPopup, sound]);
+
 
   useEffect(() => {
     let animation = Animated.loop(
@@ -44,8 +77,6 @@ const Dashboard = ({ navigation }) => {
     };
   }, [showPopup]);
   
-  
-
   const filterFunc = (order) => {
     const temp = ["liveOrders", "completedOrders", "stats", "allOrders"]
 
