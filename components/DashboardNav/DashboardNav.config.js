@@ -17,16 +17,6 @@ const DashboardNavConfig = [
       screen: 'CompletedOrders',
     },
     {
-      id: 'collection',
-      label: 'Collection',
-      screen: 'Collection',
-    },
-    {
-      id: 'delivery',
-      label: 'Delivery',
-      screen: 'Delivery',
-    },
-    {
       id: 'stats',
       label: 'Stats',
       screen: 'Stats',

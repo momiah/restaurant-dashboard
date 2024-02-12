@@ -9,9 +9,9 @@ import { db } from "../config/firebase.config";
 import { onSnapshot, getDocs, collection } from "firebase/firestore";
 import { Audio } from 'expo-av';
 
-const Dashboard = ({ navigation }) => {
+const Dashboard = ({ navigation, filter, setFilter }) => {
   const [orders, setOrders] = useState([]);
-  const [filter, setFilter] = useState('allOrders');
+
   const [showPopup, setShowPopup] = useState(false);
   const pulseValue = new Animated.Value(1);
 
