@@ -157,9 +157,21 @@ const AllOrders = ({ orders }) => {
                       </ExtrasContainer>
                     ) : (
                       <NoExtrasContainer>
-                        <OrderProtein style={{ fontWeight: "bold" }}>
-                          {protein}
-                        </OrderProtein>
+                         {proteins.map((protein, index) => {
+                          const proteinValue = protein.protein
+                            ? protein.protein.toUpperCase()
+                            : null;
+                          return (
+                            proteinValue !== null && (
+                              <OrderProtein
+                                key={index}
+                                style={{ fontWeight: "bold" }}
+                              >
+                                {proteinValue}
+                              </OrderProtein>
+                            )
+                          );
+                        })}
                       </NoExtrasContainer>
                     )}
                   </View>
