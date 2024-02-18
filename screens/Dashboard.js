@@ -107,7 +107,7 @@ const Dashboard = ({ navigation, filter, setFilter }) => {
       const changes = snapshot.docChanges();
       const filteredOrders = data.filter(filterFunc);
       setOrders(filteredOrders);
-      console.log("changes => ", changes[0].doc.data())
+      // console.log("changes => ", changes[0].doc.data())
       if (changes.length > 0 && changes[0].type === 'added') {
         setShowPopup(true);
       }
@@ -119,7 +119,7 @@ const Dashboard = ({ navigation, filter, setFilter }) => {
   const handlePopupTap = () => {
 
     setShowPopup(false);
-    console.log('tapped', showPopup)
+
   };
 
   return (

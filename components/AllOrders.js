@@ -13,15 +13,17 @@ const AllOrders = ({ orders }) => {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const renderOrderItem = ({ item, index }) => {
-    // console.log(item);
     const isRowSelected = selectedOrder === index;
 
     const handleRowPress = () => {
       setSelectedOrder(isRowSelected ? null : index);
-      // console.log("selectedRow", isRowSelected);
     };
 
-    const numberOfItems = item.orderItems.map(item => item.quantity).reduce((currentValue, accumulator) => currentValue + accumulator, 0)
+    console.log(item)
+
+    const numberOfItems = item.orderItems
+      .map((item) => item.quantity)
+      .reduce((currentValue, accumulator) => currentValue + accumulator, 0);
 
     return (
       <>
@@ -39,6 +41,10 @@ const AllOrders = ({ orders }) => {
               <ExpandedText>
                 Order Type:{" "}
                 <Text style={{ fontWeight: "normal" }}>{item.orderType}</Text>
+              </ExpandedText>
+              <ExpandedText>
+                Created At:{" "}
+                <Text style={{ fontWeight: "normal" }}>{item.createdAt}</Text>
               </ExpandedText>
               {item.address && (
                 <ExpandedText>
@@ -66,7 +72,7 @@ const AllOrders = ({ orders }) => {
                 <ExpandedText>
                   Notes:{" "}
                   <Text style={{ fontWeight: "normal" }}>
-                    {item.address == "" ? "No Notes" : item.notes}
+                    {item.notes == "" ? "No Notes" : item.notes}
                   </Text>
                 </ExpandedText>
               )}
@@ -74,40 +80,86 @@ const AllOrders = ({ orders }) => {
 
             <OrderContainer>
               <NumberOfItemContainer>
-                <Text style={{fontWeight: 'bold'}}>Number of Items</Text>
-                <Text style={{fontWeight: 'bold'}}>{numberOfItems}</Text>
+                <Text style={{ fontWeight: "bold" }}>Number of Items</Text>
+                <Text style={{ fontWeight: "bold" }}>{numberOfItems}</Text>
               </NumberOfItemContainer>
               {item.orderItems.map((orderItem, index) => {
-                const protein = !orderItem.protein
-                  ? "NO PROTEIN"
-                  : orderItem.protein.toUpperCase();
-                const itemPrice = orderItem.price * orderItem.quantity
+                const proteins = [
+                  {
+                    type: "Protein #1",
+                    protein: orderItem.protein,
+                  },
+                  {
+                    type: "Protein #2",
+                    protein: orderItem.secondProtein,
+                  },
+                  {
+                    type: "Protein #3",
+                    protein: orderItem.thirdProtein,
+                  },
+                ];
+
+                const extrasPrice = orderItem.extras
+                  .map((extra) => extra.price)
+                  .reduce((acc, currentVal) => acc + currentVal, 0);
+
+                const originalPrice =
+                  (orderItem.price - extrasPrice) * orderItem.quantity;
+
                 return (
                   <View key={index} style={{ marginBottom: 10 }}>
                     <OrderItemContainer>
-                      <OrderItem>{orderItem.name}  x{orderItem.quantity}</OrderItem>
-                      <OrderItemPrice>£{itemPrice.toFixed(2)}</OrderItemPrice>
+                      <OrderItem>
+                        {orderItem.name} ({orderItem.quantity})
+                      </OrderItem>
+                      <OrderItemPrice>
+                        £{originalPrice.toFixed(2)}
+                      </OrderItemPrice>
                     </OrderItemContainer>
 
                     {orderItem.extras && orderItem.extras.length > 0 ? (
                       <ExtrasContainer>
-                        <OrderProtein style={{ fontWeight: "bold" }}>
+                        {proteins.map((protein, index) => {
+                          const proteinValue = protein.protein
+                            ? protein.protein.toUpperCase()
+                            : null;
+                          return (
+                            proteinValue !== null && (
+                              <OrderProtein
+                                key={index}
+                                style={{ fontWeight: "bold" }}
+                              >
+                                {proteinValue}
+                              </OrderProtein>
+                            )
+                          );
+                        })}
+                        {/* <OrderProtein style={{ fontWeight: "bold" }}>
                           {protein}
-                        </OrderProtein>
-                        <View
-                          style={{
-                            display: "flex",
-                            flexDirection: "row",
-                            justifyContent: "space-between",
-                          }}
-                        >
-                          <OrderExtras>{orderItem.extras[0].type}</OrderExtras>
-            
-                        </View>
+                        </OrderProtein> */}
+
+                        {orderItem.extras.map((extra) => {
+                          return (
+                            <View
+                              style={{
+                                display: "flex",
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <OrderExtras>{extra.type}</OrderExtras>
+                              <OrderExtras>
+                                £{extra.price.toFixed(2)}
+                              </OrderExtras>
+                            </View>
+                          );
+                        })}
                       </ExtrasContainer>
                     ) : (
                       <NoExtrasContainer>
-                        <OrderProtein> {protein}</OrderProtein>
+                        <OrderProtein style={{ fontWeight: "bold" }}>
+                          {protein}
+                        </OrderProtein>
                       </NoExtrasContainer>
                     )}
                   </View>
@@ -230,7 +282,7 @@ const OrderItem = styled.Text({
 const OrderItemPrice = styled.Text({
   fontSize: 12,
   fontWeight: "bold",
-  paddingBottom: 10
+  paddingBottom: 10,
 });
 
 const ExtrasContainer = styled.View({
