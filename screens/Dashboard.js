@@ -9,9 +9,9 @@ import { db } from "../config/firebase.config";
 import { onSnapshot, getDocs, collection } from "firebase/firestore";
 import { Audio } from 'expo-av';
 
-const Dashboard = ({ navigation }) => {
+const Dashboard = ({ navigation, filter, setFilter }) => {
   const [orders, setOrders] = useState([]);
-  const [filter, setFilter] = useState('allOrders');
+
   const [showPopup, setShowPopup] = useState(false);
   const pulseValue = new Animated.Value(1);
 
@@ -107,7 +107,7 @@ const Dashboard = ({ navigation }) => {
       const changes = snapshot.docChanges();
       const filteredOrders = data.filter(filterFunc);
       setOrders(filteredOrders);
-      console.log("changes => ", changes[0].doc.data())
+      // console.log("changes => ", changes[0].doc.data())
       if (changes.length > 0 && changes[0].type === 'added') {
         setShowPopup(true);
       }
@@ -119,7 +119,7 @@ const Dashboard = ({ navigation }) => {
   const handlePopupTap = () => {
 
     setShowPopup(false);
-    console.log('tapped', showPopup)
+
   };
 
   return (
