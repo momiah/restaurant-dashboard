@@ -9,7 +9,7 @@ import HomeHeader from "./components/HomeHeader/HomeHeader";
 const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const [filter, setFilter] = useState("collection");
+  const [filter, setFilter] = useState("allOrders");
 
   return (
     <NavigationContainer>

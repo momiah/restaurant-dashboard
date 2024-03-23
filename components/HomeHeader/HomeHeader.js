@@ -21,6 +21,7 @@ const HomeHeader = ({filter, setFilter}) => {
     const handleFilterChange = (newFilter) => {
         setFilter(newFilter);
       };
+
   return (
     <HomeHeaderContainer>
     <OnlineStatusContainer>
@@ -28,6 +29,12 @@ const HomeHeader = ({filter, setFilter}) => {
       <GlowingDot />
     </OnlineStatusContainer>
     <HeaderIcons>
+      <RadioButton
+        label="All Orders"
+        filterType="allOrders"
+        currentFilter={filter}
+        onPress={handleFilterChange}
+      />
       <RadioButton
         label="Collection"
         filterType="collection"

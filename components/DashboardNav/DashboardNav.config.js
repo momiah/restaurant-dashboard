@@ -2,11 +2,6 @@
 
 const DashboardNavConfig = [
     {
-      id: 'allOrders',
-      label: 'All Orders',
-      screen: 'AllOrders', // Replace with the actual screen/component name
-    },
-    {
       id: 'liveOrders',
       label: 'Live Orders',
       screen: 'LiveOrders',
