@@ -8,9 +8,15 @@ import {
 } from "react-native";
 import { db } from "../config/firebase.config";
 import styled from "styled-components/native";
+import { parseDate } from "../helpers/parseDate";
 
 const AllOrders = ({ orders }) => {
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const sortedOrders = orders.sort((a, b) => {
+    const dateA = new Date(parseDate(a.createdAt));
+    const dateB = new Date(parseDate(b.createdAt));
+    return dateB - dateA;
+  });
 
   const renderOrderItem = ({ item, index }) => {
     const isRowSelected = selectedOrder === index;
@@ -18,8 +24,6 @@ const AllOrders = ({ orders }) => {
     const handleRowPress = () => {
       setSelectedOrder(isRowSelected ? null : index);
     };
-
-    console.log(item)
 
     const numberOfItems = item.orderItems
       .map((item) => item.quantity)
@@ -197,7 +201,7 @@ const AllOrders = ({ orders }) => {
 
       {/* Orders List */}
       <FlatList
-        data={orders}
+        data={sortedOrders}
         renderItem={renderOrderItem}
         keyExtractor={(item) => item.id}
       />

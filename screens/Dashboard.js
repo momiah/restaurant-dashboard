@@ -117,9 +117,7 @@ const Dashboard = ({ navigation, filter, setFilter }) => {
   }, [])
 
   const handlePopupTap = () => {
-
     setShowPopup(false);
-
   };
 
   return (
