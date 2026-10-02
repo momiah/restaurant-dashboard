@@ -9,16 +9,13 @@ import { getAuth } from "firebase/auth";
 const env = process.env;
 
 const firebaseConfig = {
-  apiKey: env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyD3ehzE8DkNklEK5f3X_mZvSm7ULTcqtdY",
-  authDomain: env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "tacomonster-a73fa.firebaseapp.com",
-  databaseURL:
-    env.EXPO_PUBLIC_FIREBASE_DATABASE_URL ||
-    "https://tacomonster-a73fa-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "tacomonster-a73fa",
-  storageBucket: env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "tacomonster-a73fa.appspot.com",
-  messagingSenderId: env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "772366282257",
-  appId: env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:772366282257:web:0d3cd0f07621fa6cfb4bb0",
-  measurementId: env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-GXF65X8PDW",
+  apiKey: env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyAm1bPTxm9csx2HYISUm35xlwUahGKxg8Q",
+  authDomain: env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "menudock-platform.firebaseapp.com",
+  projectId: env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "menudock-platform",
+  storageBucket: env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "menudock-platform.firebasestorage.app",
+  messagingSenderId: env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "824146300662",
+  appId: env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:824146300662:web:9b55170f16fd98bb62e6d7",
+  measurementId: env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-6V9SW20WHC",
 };
 
 const app = initializeApp(firebaseConfig);
