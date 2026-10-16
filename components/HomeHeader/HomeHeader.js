@@ -2,6 +2,7 @@ import React from 'react'
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
 import Icon from "react-native-vector-icons/Ionicons";
+import { useAuth } from "../../context/AuthContext";
 
 const RadioButton = ({ label, filterType, currentFilter, onPress }) => {
     return (
@@ -17,7 +18,8 @@ const RadioButton = ({ label, filterType, currentFilter, onPress }) => {
   };
 
 const HomeHeader = ({filter, setFilter}) => {
-    
+    const { restaurant } = useAuth();
+
     const handleFilterChange = (newFilter) => {
         setFilter(newFilter);
       };
@@ -25,6 +27,9 @@ const HomeHeader = ({filter, setFilter}) => {
   return (
     <HomeHeaderContainer>
     <OnlineStatusContainer>
+      {restaurant?.name ? (
+        <RestaurantName numberOfLines={1}>{restaurant.name}</RestaurantName>
+      ) : null}
       <OnlineStatus>Online</OnlineStatus>
       <GlowingDot />
     </OnlineStatusContainer>
@@ -76,6 +81,14 @@ const HomeHeaderContainer = styled.SafeAreaView({
     fontSize: 15,
     textShadowColor: "#BAFFA2",
     textShadowRadius: 1,
+  });
+
+  const RestaurantName = styled.Text({
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "bold",
+    marginRight: 10,
+    maxWidth: 160,
   });
   
   const GlowingDot = styled.View({

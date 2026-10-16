@@ -6,10 +6,12 @@ import DashboardNavConfig from "../components/DashboardNav/DashboardNav.config";
 import AllOrders from "../components/AllOrders";
 import Icon from 'react-native-vector-icons/Ionicons'
 import { db } from "../config/firebase.config";
-import { onSnapshot, getDocs, collection } from "firebase/firestore";
+import { onSnapshot, getDocs, collection, query, where } from "firebase/firestore";
 import { Audio } from 'expo-av';
+import { useAuth } from "../context/AuthContext";
 
 const Dashboard = ({ navigation, filter, setFilter }) => {
+  const { restaurantId } = useAuth();
   const [orders, setOrders] = useState([]);
 
   const [showPopup, setShowPopup] = useState(false);
@@ -83,11 +85,15 @@ const Dashboard = ({ navigation, filter, setFilter }) => {
     return temp.includes(filter) || order.orderType?.toLowerCase() === filter;
   };
 
+  // Scope every order read to this owner's restaurant.
+  const ordersQuery = () =>
+    query(collection(db, "orders"), where("restaurantId", "==", restaurantId));
+
   useEffect(() => {
+    if (!restaurantId) return;
     const fetchOrders = async () => {
       try {
-        const ordersCollection = collection(db, "orders");
-        const ordersSnapshot = await getDocs(ordersCollection);
+        const ordersSnapshot = await getDocs(ordersQuery());
         const data = ordersSnapshot.docs.map((doc) => doc.data());
         const filteredOrders = data.filter(filterFunc);
 
@@ -98,23 +104,23 @@ const Dashboard = ({ navigation, filter, setFilter }) => {
     };
 
     fetchOrders();
-  }, [filter]);
+  }, [filter, restaurantId]);
 
-  // add event listener to firestore to listen for new doc adds
+  // add event listener to firestore to listen for new doc adds (this restaurant only)
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "orders"), (snapshot) => {
+    if (!restaurantId) return;
+    const unsubscribe = onSnapshot(ordersQuery(), (snapshot) => {
       const data = snapshot.docs.map((doc) => doc.data());
       const changes = snapshot.docChanges();
       const filteredOrders = data.filter(filterFunc);
       setOrders(filteredOrders);
-      // console.log("changes => ", changes[0].doc.data())
       if (changes.length > 0 && changes[0].type === 'added') {
         setShowPopup(true);
       }
     });
 
     return () => unsubscribe();
-  }, [])
+  }, [restaurantId])
 
   const handlePopupTap = () => {
     setShowPopup(false);
