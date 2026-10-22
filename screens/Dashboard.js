@@ -1,130 +1,82 @@
-// DashboardNav.js
-import React, { useState, useEffect } from "react";
-import { TouchableOpacity, View, Text, Animated, Easing } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { TouchableOpacity, View, Text, Animated, Easing } from "react-native";
 import styled from "styled-components/native";
+import { Ionicons as Icon } from "@expo/vector-icons";
+import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
+import { onSnapshot, collection, query, where } from "firebase/firestore";
 import DashboardNavConfig from "../components/DashboardNav/DashboardNav.config";
 import AllOrders from "../components/AllOrders";
-import Icon from 'react-native-vector-icons/Ionicons'
 import { db } from "../config/firebase.config";
-import { onSnapshot, getDocs, collection, query, where } from "firebase/firestore";
-import { Audio } from 'expo-av';
 import { useAuth } from "../context/AuthContext";
+import { isPaid, newlyPaid } from "../helpers/orders";
+
+const ALARM = require("../assets/new-order-alarm.wav");
+// Nav filters that show every order rather than filtering by order type.
+const SHOW_ALL = ["liveOrders", "completedOrders", "stats", "allOrders"];
 
 const Dashboard = ({ navigation, filter, setFilter }) => {
   const { restaurantId } = useAuth();
   const [orders, setOrders] = useState([]);
-
   const [showPopup, setShowPopup] = useState(false);
-  const pulseValue = new Animated.Value(1);
+  const pulseValue = useRef(new Animated.Value(1)).current;
+  // Ids of paid orders we already know about; null until the first snapshot lands.
+  const seenPaid = useRef(null);
 
-  const [sound, setSound] = useState();
+  const alarm = useAudioPlayer(ALARM);
 
+  // A kitchen tablet must ring even with the silent switch on.
   useEffect(() => {
-    // Load the sound file
-    const loadSound = async () => {
-      const { sound } = await Audio.Sound.createAsync(
-        require('../assets/security-alarm-63578.mp3')
-      );
-      setSound(sound);
-    };
-
-    loadSound();
-
-    // Clean up the sound
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-    };
+    setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (showPopup && sound) {
-      // Play the sound when the popup is visible
-      sound.playAsync();
-    } else if (!showPopup && sound) {
-      // Stop the sound when the popup is closed
-      sound.stopAsync();
-    }
-  }, [showPopup, sound]);
-
-
-  useEffect(() => {
-    let animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseValue, {
-          toValue: 1.015,
-          duration: 500,
-          easing: Easing.linear,
-          useNativeDriver: true
-        }),
-        Animated.timing(pulseValue, {
-          toValue: 1,
-          duration: 500,
-          easing: Easing.linear,
-          useNativeDriver: true
-        })
-      ]),
-      { iterations: -1 } // -1 indicates infinite iterations
-    );
-  
+    alarm.loop = true;
     if (showPopup) {
-      animation.start();
+      alarm.seekTo(0);
+      alarm.play();
     } else {
-      animation.stop();
+      alarm.pause();
     }
-  
-    return () => {
-      animation.stop();
-    };
-  }, [showPopup]);
-  
-  const filterFunc = (order) => {
-    const temp = ["liveOrders", "completedOrders", "stats", "allOrders"]
-
-    return temp.includes(filter) || order.orderType?.toLowerCase() === filter;
-  };
-
-  // Scope every order read to this owner's restaurant.
-  const ordersQuery = () =>
-    query(collection(db, "orders"), where("restaurantId", "==", restaurantId));
+  }, [showPopup, alarm]);
 
   useEffect(() => {
-    if (!restaurantId) return;
-    const fetchOrders = async () => {
-      try {
-        const ordersSnapshot = await getDocs(ordersQuery());
-        const data = ordersSnapshot.docs.map((doc) => doc.data());
-        const filteredOrders = data.filter(filterFunc);
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseValue, { toValue: 1.015, duration: 500, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(pulseValue, { toValue: 1, duration: 500, easing: Easing.linear, useNativeDriver: true }),
+      ])
+    );
+    if (showPopup) animation.start();
+    return () => animation.stop();
+  }, [showPopup, pulseValue]);
 
-        setOrders(filteredOrders);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    fetchOrders();
-  }, [filter, restaurantId]);
-
-  // add event listener to firestore to listen for new doc adds (this restaurant only)
+  // One live subscription to this restaurant's orders. Only Stripe-confirmed (paid)
+  // orders reach the kitchen; the alarm sounds when an order newly becomes paid,
+  // never for orders that already existed when the app opened.
   useEffect(() => {
-    if (!restaurantId) return;
-    const unsubscribe = onSnapshot(ordersQuery(), (snapshot) => {
-      const data = snapshot.docs.map((doc) => doc.data());
-      const changes = snapshot.docChanges();
-      const filteredOrders = data.filter(filterFunc);
-      setOrders(filteredOrders);
-      if (changes.length > 0 && changes[0].type === 'added') {
-        setShowPopup(true);
-      }
-    });
+    if (!restaurantId) return undefined;
+    seenPaid.current = null;
+    const q = query(collection(db, "orders"), where("restaurantId", "==", restaurantId));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const all = snapshot.docs.map((d) => ({ ...d.data(), id: d.id }));
+        const { paid, fresh, seen } = newlyPaid(all, seenPaid.current);
+        seenPaid.current = seen;
+        setOrders(paid);
+        if (fresh.length > 0) setShowPopup(true);
+      },
+      (err) => console.error("Order feed error", err)
+    );
+    return unsubscribe;
+  }, [restaurantId]);
 
-    return () => unsubscribe();
-  }, [restaurantId])
+  const visibleOrders = useMemo(
+    () => (SHOW_ALL.includes(filter) ? orders : orders.filter((o) => o.orderType?.toLowerCase() === filter)),
+    [orders, filter]
+  );
 
-  const handlePopupTap = () => {
-    setShowPopup(false);
-  };
+  const handlePopupTap = () => setShowPopup(false);
 
   return (
     <DashboardContainer>
@@ -148,7 +100,7 @@ const Dashboard = ({ navigation, filter, setFilter }) => {
           <Icon name="settings-outline" color={'white'} size={30} style={{marginLeft: 20, marginTop: 20}} onPress={() => navigation.navigate('Settings')}/>
       </NavContainer>
      
-      <AllOrders orders={orders}/>
+      <AllOrders orders={visibleOrders}/>
     </DashboardContainer>
   );
 };
@@ -175,8 +127,8 @@ const styles = {
     height: '90%',
     left: '5%',
      backgroundColor: 'rgba(0, 30, 0, 0.9)',
-     padding: '20px',
-     borderRadius: '10px',
+     padding: 20,
+     borderRadius: 10,
      zIndex: 10
   },
   popupContent: {

@@ -12,7 +12,7 @@ import { parseDate } from "../helpers/parseDate";
 
 const AllOrders = ({ orders }) => {
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const sortedOrders = orders.sort((a, b) => {
+  const sortedOrders = [...orders].sort((a, b) => {
     const dateA = new Date(parseDate(a.createdAt));
     const dateB = new Date(parseDate(b.createdAt));
     return dateB - dateA;
@@ -25,7 +25,7 @@ const AllOrders = ({ orders }) => {
       setSelectedOrder(isRowSelected ? null : index);
     };
 
-    const numberOfItems = item.orderItems
+    const numberOfItems = (item.orderItems || [])
       .map((item) => item.quantity)
       .reduce((currentValue, accumulator) => currentValue + accumulator, 0);
 
@@ -33,9 +33,9 @@ const AllOrders = ({ orders }) => {
       <>
         <Row onPressIn={handleRowPress}>
           <Cell>{item.name}</Cell>
-          <Cell>{item.id.slice(-5).toUpperCase()}</Cell>
+          <Cell>{String(item.id || "").slice(-5).toUpperCase()}</Cell>
           <Cell>{item.orderType}</Cell>
-          <Cell>£{item.total.toFixed(2)}</Cell>
+          <Cell>£{Number(item.total || 0).toFixed(2)}</Cell>
         </Row>
 
         {/* Render expanded content if the row is selected */}
@@ -87,7 +87,7 @@ const AllOrders = ({ orders }) => {
                 <Text style={{ fontWeight: "bold" }}>Number of Items</Text>
                 <Text style={{ fontWeight: "bold" }}>{numberOfItems}</Text>
               </NumberOfItemContainer>
-              {item.orderItems.map((orderItem, index) => {
+              {(item.orderItems || []).map((orderItem, index) => {
                 const proteins = [
                   {
                     type: "Protein #1",
@@ -103,8 +103,8 @@ const AllOrders = ({ orders }) => {
                   },
                 ];
 
-                const extrasPrice = orderItem.extras
-                  .map((extra) => extra.price)
+                const extrasPrice = (orderItem.extras || [])
+                  .map((extra) => Number(extra.price) || 0)
                   .reduce((acc, currentVal) => acc + currentVal, 0);
 
                 const originalPrice =
@@ -142,9 +142,10 @@ const AllOrders = ({ orders }) => {
                           {protein}
                         </OrderProtein> */}
 
-                        {orderItem.extras.map((extra) => {
+                        {(orderItem.extras || []).map((extra, extraIndex) => {
                           return (
                             <View
+                              key={extraIndex}
                               style={{
                                 display: "flex",
                                 flexDirection: "row",
@@ -153,7 +154,7 @@ const AllOrders = ({ orders }) => {
                             >
                               <OrderExtras>{extra.type}</OrderExtras>
                               <OrderExtras>
-                                £{extra.price.toFixed(2)}
+                                £{Number(extra.price || 0).toFixed(2)}
                               </OrderExtras>
                             </View>
                           );
