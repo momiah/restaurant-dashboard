@@ -1,7 +1,8 @@
 import React from 'react'
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import styled from "styled-components/native";
-import Icon from "react-native-vector-icons/Ionicons";
+import { Ionicons as Icon } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
 
 const RadioButton = ({ label, filterType, currentFilter, onPress }) => {
@@ -60,7 +61,7 @@ const HomeHeader = ({filter, setFilter}) => {
 }
 
 
-const HomeHeaderContainer = styled.SafeAreaView({
+const HomeHeaderContainer = styled(SafeAreaView)({
     height: "10%",
     backgroundColor: "#2c3e50",
     flexDirection: "row",
