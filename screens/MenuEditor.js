@@ -4,6 +4,7 @@ import styled from "styled-components/native";
 import { collection, doc, getDocs, orderBy, query, writeBatch } from "firebase/firestore";
 import { db } from "../config/firebase.config";
 import { useAuth } from "../context/AuthContext";
+import { addMenuPhoto } from "../helpers/menuPhotos";
 
 const slugify = (s) =>
   (s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -18,6 +19,7 @@ export default function MenuEditor() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [editing, setEditing] = useState(null); // { c, i, draft }
+  const [photoBusy, setPhotoBusy] = useState(false);
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -70,12 +72,15 @@ export default function MenuEditor() {
   };
 
   const openItem = (c, i) => {
-    const base = i == null ? { name: "", price: "", description: "" } : categories[c].items[i];
+    const base = i == null ? { name: "", price: "", description: "", imageUrl: "" } : categories[c].items[i];
     setEditing({ c, i, draft: { ...base, price: String(base.price ?? "") } });
   };
   const saveItem = () => {
     const { c, i, draft } = editing;
     const item = { ...(i == null ? { extras: [], protein: [] } : categories[c].items[i]), name: draft.name.trim(), price: Number(draft.price) || 0, description: (draft.description || "").trim() };
+    // Firestore rejects undefined, so drop the field rather than blanking it.
+    if (draft.imageUrl) item.imageUrl = draft.imageUrl;
+    else delete item.imageUrl;
     setCategories((prev) =>
       prev.map((cat, ci) => {
         if (ci !== c) return cat;
@@ -88,6 +93,21 @@ export default function MenuEditor() {
     setEditing(null);
     touch();
   };
+  // Uploads straight away (so the sheet can show it); the item only points at the new
+  // photo once the owner taps Done and then saves the menu.
+  const choosePhoto = async (source) => {
+    setPhotoBusy(true);
+    try {
+      const url = await addMenuPhoto({ restaurantId, itemName: editing?.draft.name, source });
+      if (url) setEditing((e) => (e ? { ...e, draft: { ...e.draft, imageUrl: url } } : e));
+    } catch (e) {
+      Alert.alert("Couldn't add photo", e.message);
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+  const removePhoto = () => setEditing((e) => ({ ...e, draft: { ...e.draft, imageUrl: "" } }));
+
   const removeItem = (c, i) => {
     setCategories((prev) => prev.map((cat, ci) => (ci === c ? { ...cat, items: cat.items.filter((_, j) => j !== i) } : cat)));
     touch();
@@ -133,6 +153,7 @@ export default function MenuEditor() {
 
             {cat.items.map((it, ii) => (
               <Item key={ii} onPress={() => openItem(ci, ii)}>
+                {it.imageUrl ? <Thumb source={{ uri: it.imageUrl }} accessibilityLabel={`Photo of ${it.name}`} /> : <ThumbEmpty><ThumbEmptyTxt>No photo</ThumbEmptyTxt></ThumbEmpty>}
                 <ItemMain>
                   <ItemName>{it.name || "(unnamed)"}</ItemName>
                   {it.description ? <ItemDesc numberOfLines={1}>{it.description}</ItemDesc> : null}
@@ -165,9 +186,26 @@ export default function MenuEditor() {
             <Input value={editing?.draft.price} onChangeText={(t) => setEditing((e) => ({ ...e, draft: { ...e.draft, price: t } }))} placeholder="2.15" keyboardType="decimal-pad" />
             <Label>Description</Label>
             <Input value={editing?.draft.description} onChangeText={(t) => setEditing((e) => ({ ...e, draft: { ...e.draft, description: t } }))} placeholder="Short description" multiline />
+            <Label>Photo</Label>
+            <PhotoRow>
+              {photoBusy ? (
+                <PhotoPreviewEmpty><ActivityIndicator /></PhotoPreviewEmpty>
+              ) : editing?.draft.imageUrl ? (
+                <PhotoPreview source={{ uri: editing.draft.imageUrl }} accessibilityLabel="Item photo" />
+              ) : (
+                <PhotoPreviewEmpty><ThumbEmptyTxt>No photo</ThumbEmptyTxt></PhotoPreviewEmpty>
+              )}
+              <PhotoActions>
+                <PhotoBtn onPress={() => choosePhoto("camera")} disabled={photoBusy}><PhotoBtnTxt>Take photo</PhotoBtnTxt></PhotoBtn>
+                <PhotoBtn onPress={() => choosePhoto("library")} disabled={photoBusy}><PhotoBtnTxt>Choose photo</PhotoBtnTxt></PhotoBtn>
+                {editing?.draft.imageUrl && !photoBusy ? (
+                  <PhotoBtn onPress={removePhoto}><RemoveTxt>Remove photo</RemoveTxt></PhotoBtn>
+                ) : null}
+              </PhotoActions>
+            </PhotoRow>
             <Row>
               <Ghost onPress={() => setEditing(null)}><GhostTxt>Cancel</GhostTxt></Ghost>
-              <Primary onPress={saveItem}><PrimaryTxt>Done</PrimaryTxt></Primary>
+              <Primary onPress={saveItem} disabled={photoBusy} style={{ opacity: photoBusy ? 0.5 : 1 }}><PrimaryTxt>Done</PrimaryTxt></Primary>
             </Row>
           </Sheet>
         </ModalScrim>
@@ -185,6 +223,16 @@ const CatHead = styled.View({ flexDirection: "row", alignItems: "center", gap: 8
 const CatInput = styled.TextInput(({ theme }) => ({ flex: 1, fontSize: 18, fontWeight: "800", color: theme.colors.text, paddingVertical: 6 }));
 const Item = styled.TouchableOpacity({ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, borderTopWidth: 1, borderTopColor: "#f1f1f1" });
 const ItemMain = styled.View({ flex: 1 });
+const Thumb = styled.Image({ width: 48, height: 36, borderRadius: 6, backgroundColor: "#f0f2f4" });
+const ThumbEmpty = styled.View({ width: 48, height: 36, borderRadius: 6, backgroundColor: "#f0f2f4", alignItems: "center", justifyContent: "center" });
+const ThumbEmptyTxt = styled.Text({ fontSize: 9, color: "#9aa0a6" });
+const PhotoRow = styled.View({ flexDirection: "row", gap: 14, alignItems: "center" });
+const PhotoPreview = styled.Image({ width: 160, height: 120, borderRadius: 10, backgroundColor: "#f0f2f4" });
+const PhotoPreviewEmpty = styled.View({ width: 160, height: 120, borderRadius: 10, backgroundColor: "#f0f2f4", alignItems: "center", justifyContent: "center" });
+const PhotoActions = styled.View({ gap: 8 });
+const PhotoBtn = styled.TouchableOpacity({ paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, backgroundColor: "#f0f2f4", minHeight: 44, justifyContent: "center" });
+const PhotoBtnTxt = styled.Text({ fontWeight: "700", color: "#17202A" });
+const RemoveTxt = styled.Text({ fontWeight: "700", color: "#c0392b" });
 const ItemName = styled.Text({ fontSize: 15, fontWeight: "600", color: "#17202A" });
 const ItemDesc = styled.Text({ fontSize: 12, color: "#9aa0a6" });
 const ItemPrice = styled.Text({ fontSize: 15, fontWeight: "700", color: "#17202A" });

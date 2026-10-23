@@ -27,7 +27,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow access to your photos to add pictures of your menu items.",
+          "cameraPermission": "Allow camera access to take pictures of your menu items."
+        }
+      ]
     ]
   }
 }
