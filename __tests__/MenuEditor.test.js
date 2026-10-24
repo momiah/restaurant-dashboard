@@ -116,7 +116,7 @@ it("deleting a category (after confirming) removes its document", async () => {
 it("shows an empty state when the restaurant has no menu yet", async () => {
   mockMenuDocs = [];
   await renderEditor();
-  expect(await screen.findByText("No menu yet. Add your first category below.")).toBeTruthy();
+  expect(await screen.findByText("No menu yet. Import one above, or add your first category below.")).toBeTruthy();
 });
 
 it("adds a photo to an item and saves its URL with the menu", async () => {
@@ -152,4 +152,22 @@ it("shows why a photo couldn't be added", async () => {
   await fireEvent.press(await screen.findByText("Soft Taco"));
   await fireEvent.press(screen.getByText("Take photo"));
   await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("Couldn't add photo", "Camera access is off."));
+});
+
+it("opens the menu import, but not over unsaved edits", async () => {
+  const navigation = { navigate: jest.fn(), addListener: jest.fn(() => () => {}) };
+  await render(
+    <ThemeProvider theme={buildTheme({})}>
+      <MenuEditor navigation={navigation} />
+    </ThemeProvider>
+  );
+  await screen.findByText("Soft Taco");
+  await fireEvent.press(screen.getByText("Import a menu"));
+  expect(navigation.navigate).toHaveBeenCalledWith("MenuImport");
+
+  navigation.navigate.mockClear();
+  await fireEvent.press(screen.getByText("+ Add category"));
+  await fireEvent.press(screen.getByText("Import a menu"));
+  expect(navigation.navigate).not.toHaveBeenCalled();
+  expect(Alert.alert).toHaveBeenCalledWith("Save your changes first", expect.any(String));
 });

@@ -14,8 +14,8 @@ const slugify = (s) =>
 
 // Returns { uri, width } for the chosen photo, or null if the owner cancelled.
 // Throws a friendly error when camera permission is refused.
-export async function pickPhoto(source) {
-  const options = { mediaTypes: ["images"], allowsEditing: true, aspect: [4, 3], quality: 1 };
+export async function pickPhoto(source, { crop = true } = {}) {
+  const options = { mediaTypes: ["images"], allowsEditing: crop, ...(crop ? { aspect: [4, 3] } : {}), quality: 1 };
   let result;
   if (source === "camera") {
     const { granted } = await ImagePicker.requestCameraPermissionsAsync();
@@ -30,11 +30,11 @@ export async function pickPhoto(source) {
 }
 
 // Shrinks wide photos and re-encodes everything as JPEG.
-export async function preparePhoto({ uri, width }) {
+export async function preparePhoto({ uri, width }, maxWidth = MAX_PHOTO_WIDTH, compress = 0.8) {
   const context = ImageManipulator.manipulate(uri);
-  if (!width || width > MAX_PHOTO_WIDTH) context.resize({ width: MAX_PHOTO_WIDTH });
+  if (!width || width > maxWidth) context.resize({ width: maxWidth });
   const image = await context.renderAsync();
-  const saved = await image.saveAsync({ compress: 0.8, format: SaveFormat.JPEG });
+  const saved = await image.saveAsync({ compress, format: SaveFormat.JPEG });
   return saved.uri;
 }
 

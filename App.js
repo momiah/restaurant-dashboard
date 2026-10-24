@@ -6,6 +6,7 @@ import { useState } from "react";
 import Dashboard from "./screens/Dashboard";
 import Settings from "./screens/Settings";
 import MenuEditor from "./screens/MenuEditor";
+import MenuImport from "./screens/MenuImport";
 import Login from "./screens/Login";
 import HomeHeader from "./components/HomeHeader/HomeHeader";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -57,6 +58,11 @@ function AuthedApp() {
             name="Menu"
             component={MenuEditor}
             options={{ headerShown: true, title: "Edit Menu" }}
+          />
+          <Stack.Screen
+            name="MenuImport"
+            component={MenuImport}
+            options={{ headerShown: true, title: "Import a Menu" }}
           />
           <Stack.Screen
             name="Settings"

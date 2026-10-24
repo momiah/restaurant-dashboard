@@ -1,17 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollView, Modal, Alert, ActivityIndicator } from "react-native";
 import styled from "styled-components/native";
-import { collection, doc, getDocs, orderBy, query, writeBatch } from "firebase/firestore";
-import { db } from "../config/firebase.config";
 import { useAuth } from "../context/AuthContext";
 import { addMenuPhoto } from "../helpers/menuPhotos";
-
-const slugify = (s) =>
-  (s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+import { loadMenu, saveMenu } from "../helpers/menuStore";
 
 // Owners edit their menu here; it writes to restaurants/{id}/menu — the same data the
 // customer website and loyalty app read, so changes appear everywhere instantly.
-export default function MenuEditor() {
+export default function MenuEditor({ navigation }) {
   const { restaurantId } = useAuth();
   const [categories, setCategories] = useState([]);
   const [deleted, setDeleted] = useState([]); // doc ids of removed categories
@@ -21,30 +17,40 @@ export default function MenuEditor() {
   const [editing, setEditing] = useState(null); // { c, i, draft }
   const [photoBusy, setPhotoBusy] = useState(false);
 
-  useEffect(() => {
+  const reload = useCallback(async () => {
     if (!restaurantId) return;
-    (async () => {
-      try {
-        let snap;
-        const ref = collection(db, "restaurants", restaurantId, "menu");
-        try {
-          snap = await getDocs(query(ref, orderBy("order")));
-        } catch {
-          snap = await getDocs(ref);
-        }
-        setCategories(
-          snap.docs.map((d) => {
-            const data = d.data();
-            return { id: d.id, category: data.category || d.id, items: data.items || [] };
-          })
-        );
-      } catch (e) {
-        Alert.alert("Couldn't load menu", e.message);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    try {
+      setCategories(await loadMenu(restaurantId));
+      setDeleted([]);
+      setDirty(false);
+    } catch (e) {
+      Alert.alert("Couldn't load menu", e.message);
+    } finally {
+      setLoading(false);
+    }
   }, [restaurantId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  // Coming back from a menu import: show what it saved (unless there are unsaved edits).
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  useEffect(() => {
+    if (!navigation?.addListener) return undefined;
+    return navigation.addListener("focus", () => {
+      if (!dirtyRef.current) reload();
+    });
+  }, [navigation, reload]);
+
+  const openImport = () => {
+    if (dirty) {
+      Alert.alert("Save your changes first", "Save or undo your menu edits before importing a menu.");
+      return;
+    }
+    navigation?.navigate("MenuImport");
+  };
 
   const touch = () => setDirty(true);
   const updateCat = (ci, patch) => {
@@ -116,17 +122,8 @@ export default function MenuEditor() {
   const save = async () => {
     setSaving(true);
     try {
-      const batch = writeBatch(db);
-      categories.forEach((cat, idx) => {
-        const id = cat.id || slugify(cat.category) || `category-${idx + 1}`;
-        batch.set(doc(db, "restaurants", restaurantId, "menu", id), {
-          category: cat.category.trim() || "Menu",
-          order: idx + 1,
-          items: cat.items,
-        });
-      });
-      deleted.forEach((id) => batch.delete(doc(db, "restaurants", restaurantId, "menu", id)));
-      await batch.commit();
+      await saveMenu(restaurantId, categories, deleted);
+      setCategories(await loadMenu(restaurantId)); // pick up ids of new categories
       setDeleted([]);
       setDirty(false);
       Alert.alert("Saved", "Your menu is live on the website and loyalty app.");
@@ -142,7 +139,12 @@ export default function MenuEditor() {
   return (
     <Wrap>
       <Body contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
-        {categories.length === 0 && <Empty>No menu yet. Add your first category below.</Empty>}
+        <ImportBtn onPress={openImport} accessibilityRole="button">
+          <ImportTitle>Import a menu</ImportTitle>
+          <ImportSub>Take a photo of your menu, or upload a PDF, Word, Excel or CSV file — we'll turn it into items you can check before saving.</ImportSub>
+        </ImportBtn>
+
+        {categories.length === 0 && <Empty>No menu yet. Import one above, or add your first category below.</Empty>}
 
         {categories.map((cat, ci) => (
           <Card key={cat.id || `new-${ci}`}>
@@ -217,7 +219,10 @@ export default function MenuEditor() {
 const Wrap = styled.View(({ theme }) => ({ flex: 1, backgroundColor: theme.colors.background }));
 const Center = styled.View({ flex: 1, alignItems: "center", justifyContent: "center" });
 const Body = styled.ScrollView({ flex: 1 });
-const Empty = styled.Text({ color: "#6b7280", textAlign: "center", marginTop: 40 });
+const Empty = styled.Text({ color: "#6b7280", textAlign: "center", marginTop: 40, marginBottom: 20 });
+const ImportBtn = styled.TouchableOpacity(({ theme }) => ({ borderRadius: 14, padding: 16, marginBottom: 16, backgroundColor: "#fff", borderWidth: 1.5, borderColor: theme.colors.primary }));
+const ImportTitle = styled.Text(({ theme }) => ({ fontSize: 17, fontWeight: "800", color: theme.colors.primary }));
+const ImportSub = styled.Text({ fontSize: 13, color: "#6b7280", marginTop: 4 });
 const Card = styled.View({ backgroundColor: "#fff", borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "#eee" });
 const CatHead = styled.View({ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 });
 const CatInput = styled.TextInput(({ theme }) => ({ flex: 1, fontSize: 18, fontWeight: "800", color: theme.colors.text, paddingVertical: 6 }));
