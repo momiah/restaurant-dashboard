@@ -1,22 +1,25 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { TouchableOpacity, View, Text, Animated, Easing } from "react-native";
+import { TouchableOpacity, View, Text, Animated, Easing, Alert } from "react-native";
 import styled from "styled-components/native";
 import { Ionicons as Icon } from "@expo/vector-icons";
 import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
-import { onSnapshot, collection, query, where } from "firebase/firestore";
+import { onSnapshot, collection, query, where, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import DashboardNavConfig from "../components/DashboardNav/DashboardNav.config";
 import AllOrders from "../components/AllOrders";
 import { db } from "../config/firebase.config";
 import { useAuth } from "../context/AuthContext";
-import { isPaid, newlyPaid } from "../helpers/orders";
+import { newlyPaid, ordersForView, isCompleted, orderRef } from "../helpers/orders";
 
 const ALARM = require("../assets/new-order-alarm.wav");
-// Nav filters that show every order rather than filtering by order type.
-const SHOW_ALL = ["liveOrders", "completedOrders", "stats", "allOrders"];
 
-const Dashboard = ({ navigation, filter, setFilter }) => {
+// `filter` is the order-type filter from the header (all / collection / delivery);
+// `view` is the left-hand nav (live / completed / all).
+const Dashboard = ({ navigation, filter }) => {
   const { restaurantId } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [view, setView] = useState("liveOrders");
+  // Ids of orders with a status change in flight, so a double tap can't skip a step.
+  const [updating, setUpdating] = useState(() => new Set());
   const [showPopup, setShowPopup] = useState(false);
   const pulseValue = useRef(new Animated.Value(1)).current;
   // Ids of paid orders we already know about; null until the first snapshot lands.
@@ -71,10 +74,30 @@ const Dashboard = ({ navigation, filter, setFilter }) => {
     return unsubscribe;
   }, [restaurantId]);
 
-  const visibleOrders = useMemo(
-    () => (SHOW_ALL.includes(filter) ? orders : orders.filter((o) => o.orderType?.toLowerCase() === filter)),
-    [orders, filter]
-  );
+  const visibleOrders = useMemo(() => ordersForView(orders, view, filter), [orders, view, filter]);
+  const liveCount = useMemo(() => orders.filter((o) => !isCompleted(o)).length, [orders]);
+
+  // Move an order to another kitchen step. The rules only allow status/statusTimes
+  // changes on this restaurant's paid orders; the customer's order page updates live.
+  const setOrderStatus = async (order, status) => {
+    if (updating.has(order.id)) return;
+    setUpdating((prev) => new Set(prev).add(order.id));
+    try {
+      await updateDoc(doc(db, "orders", order.id), {
+        status,
+        [`statusTimes.${status}`]: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error("Order status update failed", err);
+      Alert.alert("Couldn't update order", `Order ${orderRef(order)} wasn't updated. Check the connection and try again.`);
+    } finally {
+      setUpdating((prev) => {
+        const next = new Set(prev);
+        next.delete(order.id);
+        return next;
+      });
+    }
+  };
 
   const handlePopupTap = () => setShowPopup(false);
 
@@ -92,15 +115,23 @@ const Dashboard = ({ navigation, filter, setFilter }) => {
       )}
       <NavContainer>
         {DashboardNavConfig.map((item) => (
-          <NavItem key={item.id} onPress={() => setFilter(item.id)}>
-            <NavLabel>{item.label}</NavLabel>
+          <NavItem key={item.id} onPress={() => setView(item.id)} $active={view === item.id} accessibilityState={{ selected: view === item.id }}>
+            <NavLabel>
+              {item.label}
+              {item.id === "liveOrders" && liveCount > 0 ? ` (${liveCount})` : ""}
+            </NavLabel>
           </NavItem>
         ))}
           <Icon name="restaurant-outline" color={'white'} size={30} style={{marginLeft: 20, marginTop: 50}} onPress={() => navigation.navigate('Menu')}/>
           <Icon name="settings-outline" color={'white'} size={30} style={{marginLeft: 20, marginTop: 20}} onPress={() => navigation.navigate('Settings')}/>
       </NavContainer>
      
-      <AllOrders orders={visibleOrders}/>
+      <AllOrders
+        orders={visibleOrders}
+        onSetStatus={setOrderStatus}
+        updating={updating}
+        emptyMessage={view === "liveOrders" ? "No live orders right now." : "No orders yet."}
+      />
     </DashboardContainer>
   );
 };
@@ -157,12 +188,13 @@ const PopupContent = styled.View({
   justifyContent: 'center'
 });
 
-const NavItem = styled.TouchableOpacity({
+const NavItem = styled.TouchableOpacity((props) => ({
   margin: 0,
   border: "1px solid #414660",
   padding: "35px 20px",
   width: "100%",
-});
+  backgroundColor: props.$active ? "#3d5368" : "transparent",
+}));
 
 const NavLabel = styled.Text({
   color: "white",

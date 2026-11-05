@@ -50,7 +50,7 @@ function AuthedApp() {
         <Stack.Navigator>
           <Stack.Screen name="Dashboard" options={{ headerShown: false }}>
             {(props) => (
-              <Dashboard {...props} filter={filter} setFilter={setFilter} />
+              <Dashboard {...props} filter={filter} />
             )}
           </Stack.Screen>
           <Stack.Screen

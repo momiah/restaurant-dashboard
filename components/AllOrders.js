@@ -1,28 +1,45 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-} from "react-native";
-import { db } from "../config/firebase.config";
+import React, { useState } from "react";
+import { View, Text, FlatList, ActivityIndicator } from "react-native";
 import styled from "styled-components/native";
-import { parseDate } from "../helpers/parseDate";
+import { nextAction, orderRef, orderStep, previousStep, statusLabel } from "../helpers/orders";
 
-const AllOrders = ({ orders }) => {
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const sortedOrders = [...orders].sort((a, b) => {
-    const dateA = new Date(parseDate(a.createdAt));
-    const dateB = new Date(parseDate(b.createdAt));
-    return dateB - dateA;
-  });
+const STATUS_COLOURS = {
+  placed: "#D64545",
+  preparing: "#E08A00",
+  ready: "#2D6CDF",
+  completed: "#3B8C3B",
+};
 
-  const renderOrderItem = ({ item, index }) => {
-    const isRowSelected = selectedOrder === index;
+// The big "next step" button. Kitchen staff tap this during service, so it's large
+// and disabled while the update is in flight.
+const NextStepButton = ({ order, onSetStatus, busy, large }) => {
+  const action = nextAction(order);
+  if (!action) return <DoneText>Done</DoneText>;
+  return (
+    <ActionButton
+      $large={large}
+      disabled={busy}
+      onPress={() => onSetStatus(order, action.status)}
+      accessibilityRole="button"
+      accessibilityLabel={`${action.label}, order ${orderRef(order)}`}
+    >
+      {busy ? <ActivityIndicator color="#fff" /> : <ActionText $large={large}>{action.label}</ActionText>}
+    </ActionButton>
+  );
+};
+
+const AllOrders = ({ orders, onSetStatus = () => {}, updating = new Set(), emptyMessage = "No orders yet." }) => {
+  // Track the open row by order id: the list re-sorts as orders move between steps.
+  const [selectedId, setSelectedId] = useState(null);
+
+  const renderOrderItem = ({ item }) => {
+    const isRowSelected = selectedId === item.id;
+    const busy = updating.has(item.id);
+    const step = orderStep(item);
+    const undoTo = previousStep(item);
 
     const handleRowPress = () => {
-      setSelectedOrder(isRowSelected ? null : index);
+      setSelectedId(isRowSelected ? null : item.id);
     };
 
     const numberOfItems = (item.orderItems || [])
@@ -31,12 +48,22 @@ const AllOrders = ({ orders }) => {
 
     return (
       <>
-        <Row onPressIn={handleRowPress}>
-          <Cell>{item.name}</Cell>
-          <Cell>{String(item.id || "").slice(-5).toUpperCase()}</Cell>
-          <Cell>{item.orderType}</Cell>
-          <Cell>£{Number(item.total || 0).toFixed(2)}</Cell>
-        </Row>
+        <RowContainer>
+          <Row onPress={handleRowPress} accessibilityLabel={`Order ${orderRef(item)}`}>
+            <Cell style={{ fontWeight: "bold" }}>{orderRef(item)}</Cell>
+            <Cell>{item.name}</Cell>
+            <Cell>{item.orderType}</Cell>
+            <Cell>£{Number(item.total || 0).toFixed(2)}</Cell>
+            <StatusCell>
+              <StatusPill style={{ backgroundColor: STATUS_COLOURS[step] }}>
+                <StatusText>{statusLabel(item)}</StatusText>
+              </StatusPill>
+            </StatusCell>
+          </Row>
+          <ActionCell>
+            <NextStepButton order={item} onSetStatus={onSetStatus} busy={busy} />
+          </ActionCell>
+        </RowContainer>
 
         {/* Render expanded content if the row is selected */}
         {isRowSelected && (
@@ -183,7 +210,23 @@ const AllOrders = ({ orders }) => {
                 );
               })}
             </OrderContainer>
-            <CustomerProfile></CustomerProfile>
+            <ProgressPanel>
+              <ExpandedText>
+                Status: <Text style={{ fontWeight: "normal" }}>{statusLabel(item)}</Text>
+              </ExpandedText>
+              <NextStepButton order={item} onSetStatus={onSetStatus} busy={busy} large />
+              {undoTo && (
+                <UndoButton
+                  disabled={busy}
+                  onPress={() => onSetStatus(item, undoTo)}
+                  accessibilityRole="button"
+                >
+                  <UndoText>
+                    Undo — back to {statusLabel({ ...item, status: undoTo })}
+                  </UndoText>
+                </UndoButton>
+              )}
+            </ProgressPanel>
           </ExpandedContent>
         )}
       </>
@@ -194,17 +237,21 @@ const AllOrders = ({ orders }) => {
     <Container>
       {/* Header */}
       <Header>
-        <HeaderText>Customer Name</HeaderText>
-        <HeaderText>Order Number</HeaderText>
-        <HeaderText>Order Type</HeaderText>
-        <HeaderText>Price</HeaderText>
+        <HeaderText>Order</HeaderText>
+        <HeaderText>Customer</HeaderText>
+        <HeaderText>Type</HeaderText>
+        <HeaderText>Total</HeaderText>
+        <HeaderText>Status</HeaderText>
+        <ActionHeader>Next step</ActionHeader>
       </Header>
 
       {/* Orders List */}
       <FlatList
-        data={sortedOrders}
+        data={orders}
         renderItem={renderOrderItem}
         keyExtractor={(item) => item.id}
+        extraData={{ selectedId, updating }}
+        ListEmptyComponent={<EmptyText>{emptyMessage}</EmptyText>}
       />
     </Container>
   );
@@ -222,8 +269,88 @@ const Header = styled.View({
   padding: "10px 3px",
 });
 
-const Row = styled.TouchableOpacity({
+const RowContainer = styled.View({
   flexDirection: "row",
+  alignItems: "stretch",
+});
+
+const Row = styled.TouchableOpacity({
+  flex: 5,
+  flexDirection: "row",
+});
+
+const ActionCell = styled.View({
+  width: 200,
+  padding: 6,
+  justifyContent: "center",
+  border: "1px solid #D9D9D9",
+});
+
+const ActionHeader = styled.Text({
+  fontWeight: "bold",
+  width: 200,
+  textAlign: "left",
+});
+
+const ActionButton = styled.TouchableOpacity((props) => ({
+  backgroundColor: props.disabled ? "#7F8C9A" : "#2c3e50",
+  borderRadius: 8,
+  minHeight: props.$large ? 64 : 48,
+  paddingHorizontal: 12,
+  alignItems: "center",
+  justifyContent: "center",
+  marginVertical: props.$large ? 12 : 0,
+}));
+
+const ActionText = styled.Text((props) => ({
+  color: "#ffffff",
+  fontWeight: "bold",
+  fontSize: props.$large ? 20 : 15,
+  textAlign: "center",
+}));
+
+const DoneText = styled.Text({
+  textAlign: "center",
+  color: "#3B8C3B",
+  fontWeight: "bold",
+});
+
+const StatusCell = styled.View({
+  flex: 1,
+  justifyContent: "center",
+  padding: "10px 6px",
+  border: "1px solid #D9D9D9",
+});
+
+const StatusPill = styled.View({
+  borderRadius: 12,
+  paddingVertical: 4,
+  paddingHorizontal: 8,
+  alignSelf: "flex-start",
+});
+
+const StatusText = styled.Text({
+  color: "#ffffff",
+  fontSize: 13,
+  fontWeight: "bold",
+});
+
+const UndoButton = styled.TouchableOpacity({
+  minHeight: 44,
+  justifyContent: "center",
+});
+
+const UndoText = styled.Text({
+  color: "#2c3e50",
+  textDecorationLine: "underline",
+  fontSize: 14,
+});
+
+const EmptyText = styled.Text({
+  textAlign: "center",
+  color: "#7F8C9A",
+  fontSize: 18,
+  marginTop: 60,
 });
 
 const HeaderText = styled.Text({
@@ -266,7 +393,7 @@ const OrderContainer = styled.ScrollView({
   width: "35%",
   padding: 10,
 });
-const CustomerProfile = styled.View({
+const ProgressPanel = styled.View({
   border: "1px solid #D9D9D9",
   width: "35%",
   padding: 10,
