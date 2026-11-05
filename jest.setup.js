@@ -7,3 +7,6 @@ jest.mock("expo-audio", () => ({
   useAudioPlayer: () => ({ loop: false, play: jest.fn(), pause: jest.fn(), seekTo: jest.fn() }),
   setAudioModeAsync: jest.fn(() => Promise.resolve()),
 }));
+// React Native defines `self` at startup (Libraries/Core/setUpGlobals.js); the jest
+// preset doesn't, and firebase/functions reads it on import.
+if (global.self === undefined) global.self = global;

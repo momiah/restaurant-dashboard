@@ -18,6 +18,8 @@ jest.mock("firebase/firestore", () => ({
 }));
 jest.mock("../config/firebase.config", () => ({ db: {} }));
 jest.mock("../context/AuthContext", () => ({ useAuth: () => ({ restaurantId: "taco-monster" }) }));
+const mockAddMenuPhoto = jest.fn();
+jest.mock("../helpers/menuPhotos", () => ({ addMenuPhoto: (...args) => mockAddMenuPhoto(...args) }));
 
 const tacos = {
   id: "tacos",
@@ -114,5 +116,58 @@ it("deleting a category (after confirming) removes its document", async () => {
 it("shows an empty state when the restaurant has no menu yet", async () => {
   mockMenuDocs = [];
   await renderEditor();
-  expect(await screen.findByText("No menu yet. Add your first category below.")).toBeTruthy();
+  expect(await screen.findByText("No menu yet. Import one above, or add your first category below.")).toBeTruthy();
+});
+
+it("adds a photo to an item and saves its URL with the menu", async () => {
+  mockAddMenuPhoto.mockResolvedValue("https://cdn.example/soft-taco.jpg");
+  await renderEditor();
+  await fireEvent.press(await screen.findByText("Soft Taco"));
+  await fireEvent.press(screen.getByText("Take photo"));
+  await waitFor(() => expect(screen.getByLabelText("Item photo")).toBeTruthy());
+  expect(mockAddMenuPhoto).toHaveBeenCalledWith({ restaurantId: "taco-monster", itemName: "Soft Taco", source: "camera" });
+
+  await fireEvent.press(screen.getByText("Done"));
+  await fireEvent.press(screen.getByText("Save changes"));
+  await waitFor(() => expect(mockBatch.commit).toHaveBeenCalled());
+  const [, saved] = mockBatch.set.mock.calls[0];
+  expect(saved.items[0]).toMatchObject({ name: "Soft Taco", imageUrl: "https://cdn.example/soft-taco.jpg", extras: [{ type: "Sour Cream", price: 0.4 }] });
+});
+
+it("removing a photo drops the field instead of writing undefined", async () => {
+  mockMenuDocs = [{ id: "tacos", data: () => ({ category: "Tacos", order: 1, items: [{ name: "Soft Taco", price: 2, imageUrl: "https://cdn.example/old.jpg" }] }) }];
+  await renderEditor();
+  await fireEvent.press(await screen.findByText("Soft Taco"));
+  await fireEvent.press(screen.getByText("Remove photo"));
+  await fireEvent.press(screen.getByText("Done"));
+  await fireEvent.press(screen.getByText("Save changes"));
+  await waitFor(() => expect(mockBatch.commit).toHaveBeenCalled());
+  const [, saved] = mockBatch.set.mock.calls[0];
+  expect(saved.items[0]).not.toHaveProperty("imageUrl");
+});
+
+it("shows why a photo couldn't be added", async () => {
+  mockAddMenuPhoto.mockRejectedValue(new Error("Camera access is off."));
+  await renderEditor();
+  await fireEvent.press(await screen.findByText("Soft Taco"));
+  await fireEvent.press(screen.getByText("Take photo"));
+  await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("Couldn't add photo", "Camera access is off."));
+});
+
+it("opens the menu import, but not over unsaved edits", async () => {
+  const navigation = { navigate: jest.fn(), addListener: jest.fn(() => () => {}) };
+  await render(
+    <ThemeProvider theme={buildTheme({})}>
+      <MenuEditor navigation={navigation} />
+    </ThemeProvider>
+  );
+  await screen.findByText("Soft Taco");
+  await fireEvent.press(screen.getByText("Import a menu"));
+  expect(navigation.navigate).toHaveBeenCalledWith("MenuImport");
+
+  navigation.navigate.mockClear();
+  await fireEvent.press(screen.getByText("+ Add category"));
+  await fireEvent.press(screen.getByText("Import a menu"));
+  expect(navigation.navigate).not.toHaveBeenCalled();
+  expect(Alert.alert).toHaveBeenCalledWith("Save your changes first", expect.any(String));
 });
