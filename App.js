@@ -5,6 +5,7 @@ import { ThemeProvider } from "styled-components/native";
 import { useState } from "react";
 import Dashboard from "./screens/Dashboard";
 import Settings from "./screens/Settings";
+import MenuEditor from "./screens/MenuEditor";
 import Login from "./screens/Login";
 import HomeHeader from "./components/HomeHeader/HomeHeader";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -52,6 +53,11 @@ function AuthedApp() {
               <Dashboard {...props} filter={filter} setFilter={setFilter} />
             )}
           </Stack.Screen>
+          <Stack.Screen
+            name="Menu"
+            component={MenuEditor}
+            options={{ headerShown: true, title: "Edit Menu" }}
+          />
           <Stack.Screen
             name="Settings"
             component={Settings}

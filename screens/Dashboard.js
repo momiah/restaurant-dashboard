@@ -144,7 +144,8 @@ const Dashboard = ({ navigation, filter, setFilter }) => {
             <NavLabel>{item.label}</NavLabel>
           </NavItem>
         ))}
-          <Icon name="settings-outline" color={'white'} size={30} style={{marginLeft: 20, marginTop: 50}} onPress={() => navigation.navigate('Settings')}/>
+          <Icon name="restaurant-outline" color={'white'} size={30} style={{marginLeft: 20, marginTop: 50}} onPress={() => navigation.navigate('Menu')}/>
+          <Icon name="settings-outline" color={'white'} size={30} style={{marginLeft: 20, marginTop: 20}} onPress={() => navigation.navigate('Settings')}/>
       </NavContainer>
      
       <AllOrders orders={orders}/>
