@@ -4,7 +4,10 @@
 // one restaurant via the owners/{uid} mapping.
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
+import { initializeAuth, getAuth, getReactNativePersistence } from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const env = process.env;
 
@@ -20,9 +23,18 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-// NOTE: getAuth uses in-memory persistence on React Native. To persist sign-in
-// across app restarts, switch to initializeAuth with getReactNativePersistence
-// backed by @react-native-async-storage/async-storage.
-const auth = getAuth(app);
+// Menu photos (restaurants/{id}/menu/*) — owners may upload their own; see storage.rules.
+const storage = getStorage(app);
+// Cloud Functions (us-central1), e.g. importMenu.
+const functions = getFunctions(app, "us-central1");
+// React Native needs AsyncStorage-backed auth persistence: owners stay signed in across
+// app restarts, and plain getAuth() would pull in web code that crashes Hermes. The
+// try/catch stops Fast Refresh (which re-runs this module) re-initialising auth.
+let auth;
+try {
+  auth = initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+} catch (e) {
+  auth = getAuth(app);
+}
 
-export { app, db, auth };
+export { app, db, auth, storage, functions };

@@ -1,130 +1,105 @@
-// DashboardNav.js
-import React, { useState, useEffect } from "react";
-import { TouchableOpacity, View, Text, Animated, Easing } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { TouchableOpacity, View, Text, Animated, Easing, Alert } from "react-native";
 import styled from "styled-components/native";
+import { Ionicons as Icon } from "@expo/vector-icons";
+import { useAudioPlayer, setAudioModeAsync } from "expo-audio";
+import { onSnapshot, collection, query, where, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import DashboardNavConfig from "../components/DashboardNav/DashboardNav.config";
 import AllOrders from "../components/AllOrders";
-import Icon from 'react-native-vector-icons/Ionicons'
 import { db } from "../config/firebase.config";
-import { onSnapshot, getDocs, collection, query, where } from "firebase/firestore";
-import { Audio } from 'expo-av';
 import { useAuth } from "../context/AuthContext";
+import { newlyPaid, ordersForView, isCompleted, orderRef } from "../helpers/orders";
 
-const Dashboard = ({ navigation, filter, setFilter }) => {
+const ALARM = require("../assets/new-order-alarm.wav");
+
+// `filter` is the order-type filter from the header (all / collection / delivery);
+// `view` is the left-hand nav (live / completed / all).
+const Dashboard = ({ navigation, filter }) => {
   const { restaurantId } = useAuth();
   const [orders, setOrders] = useState([]);
-
+  const [view, setView] = useState("liveOrders");
+  // Ids of orders with a status change in flight, so a double tap can't skip a step.
+  const [updating, setUpdating] = useState(() => new Set());
   const [showPopup, setShowPopup] = useState(false);
-  const pulseValue = new Animated.Value(1);
+  const pulseValue = useRef(new Animated.Value(1)).current;
+  // Ids of paid orders we already know about; null until the first snapshot lands.
+  const seenPaid = useRef(null);
 
-  const [sound, setSound] = useState();
+  const alarm = useAudioPlayer(ALARM);
 
+  // A kitchen tablet must ring even with the silent switch on.
   useEffect(() => {
-    // Load the sound file
-    const loadSound = async () => {
-      const { sound } = await Audio.Sound.createAsync(
-        require('../assets/security-alarm-63578.mp3')
-      );
-      setSound(sound);
-    };
-
-    loadSound();
-
-    // Clean up the sound
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-    };
+    setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (showPopup && sound) {
-      // Play the sound when the popup is visible
-      sound.playAsync();
-    } else if (!showPopup && sound) {
-      // Stop the sound when the popup is closed
-      sound.stopAsync();
-    }
-  }, [showPopup, sound]);
-
-
-  useEffect(() => {
-    let animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseValue, {
-          toValue: 1.015,
-          duration: 500,
-          easing: Easing.linear,
-          useNativeDriver: true
-        }),
-        Animated.timing(pulseValue, {
-          toValue: 1,
-          duration: 500,
-          easing: Easing.linear,
-          useNativeDriver: true
-        })
-      ]),
-      { iterations: -1 } // -1 indicates infinite iterations
-    );
-  
+    alarm.loop = true;
     if (showPopup) {
-      animation.start();
+      alarm.seekTo(0);
+      alarm.play();
     } else {
-      animation.stop();
+      alarm.pause();
     }
-  
-    return () => {
-      animation.stop();
-    };
-  }, [showPopup]);
-  
-  const filterFunc = (order) => {
-    const temp = ["liveOrders", "completedOrders", "stats", "allOrders"]
-
-    return temp.includes(filter) || order.orderType?.toLowerCase() === filter;
-  };
-
-  // Scope every order read to this owner's restaurant.
-  const ordersQuery = () =>
-    query(collection(db, "orders"), where("restaurantId", "==", restaurantId));
+  }, [showPopup, alarm]);
 
   useEffect(() => {
-    if (!restaurantId) return;
-    const fetchOrders = async () => {
-      try {
-        const ordersSnapshot = await getDocs(ordersQuery());
-        const data = ordersSnapshot.docs.map((doc) => doc.data());
-        const filteredOrders = data.filter(filterFunc);
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseValue, { toValue: 1.015, duration: 500, easing: Easing.linear, useNativeDriver: true }),
+        Animated.timing(pulseValue, { toValue: 1, duration: 500, easing: Easing.linear, useNativeDriver: true }),
+      ])
+    );
+    if (showPopup) animation.start();
+    return () => animation.stop();
+  }, [showPopup, pulseValue]);
 
-        setOrders(filteredOrders);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    fetchOrders();
-  }, [filter, restaurantId]);
-
-  // add event listener to firestore to listen for new doc adds (this restaurant only)
+  // One live subscription to this restaurant's orders. Only Stripe-confirmed (paid)
+  // orders reach the kitchen; the alarm sounds when an order newly becomes paid,
+  // never for orders that already existed when the app opened.
   useEffect(() => {
-    if (!restaurantId) return;
-    const unsubscribe = onSnapshot(ordersQuery(), (snapshot) => {
-      const data = snapshot.docs.map((doc) => doc.data());
-      const changes = snapshot.docChanges();
-      const filteredOrders = data.filter(filterFunc);
-      setOrders(filteredOrders);
-      if (changes.length > 0 && changes[0].type === 'added') {
-        setShowPopup(true);
-      }
-    });
+    if (!restaurantId) return undefined;
+    seenPaid.current = null;
+    const q = query(collection(db, "orders"), where("restaurantId", "==", restaurantId));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const all = snapshot.docs.map((d) => ({ ...d.data(), id: d.id }));
+        const { paid, fresh, seen } = newlyPaid(all, seenPaid.current);
+        seenPaid.current = seen;
+        setOrders(paid);
+        if (fresh.length > 0) setShowPopup(true);
+      },
+      (err) => console.error("Order feed error", err)
+    );
+    return unsubscribe;
+  }, [restaurantId]);
 
-    return () => unsubscribe();
-  }, [restaurantId])
+  const visibleOrders = useMemo(() => ordersForView(orders, view, filter), [orders, view, filter]);
+  const liveCount = useMemo(() => orders.filter((o) => !isCompleted(o)).length, [orders]);
 
-  const handlePopupTap = () => {
-    setShowPopup(false);
+  // Move an order to another kitchen step. The rules only allow status/statusTimes
+  // changes on this restaurant's paid orders; the customer's order page updates live.
+  const setOrderStatus = async (order, status) => {
+    if (updating.has(order.id)) return;
+    setUpdating((prev) => new Set(prev).add(order.id));
+    try {
+      await updateDoc(doc(db, "orders", order.id), {
+        status,
+        [`statusTimes.${status}`]: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error("Order status update failed", err);
+      Alert.alert("Couldn't update order", `Order ${orderRef(order)} wasn't updated. Check the connection and try again.`);
+    } finally {
+      setUpdating((prev) => {
+        const next = new Set(prev);
+        next.delete(order.id);
+        return next;
+      });
+    }
   };
+
+  const handlePopupTap = () => setShowPopup(false);
 
   return (
     <DashboardContainer>
@@ -140,15 +115,23 @@ const Dashboard = ({ navigation, filter, setFilter }) => {
       )}
       <NavContainer>
         {DashboardNavConfig.map((item) => (
-          <NavItem key={item.id} onPress={() => setFilter(item.id)}>
-            <NavLabel>{item.label}</NavLabel>
+          <NavItem key={item.id} onPress={() => setView(item.id)} $active={view === item.id} accessibilityState={{ selected: view === item.id }}>
+            <NavLabel>
+              {item.label}
+              {item.id === "liveOrders" && liveCount > 0 ? ` (${liveCount})` : ""}
+            </NavLabel>
           </NavItem>
         ))}
           <Icon name="restaurant-outline" color={'white'} size={30} style={{marginLeft: 20, marginTop: 50}} onPress={() => navigation.navigate('Menu')}/>
           <Icon name="settings-outline" color={'white'} size={30} style={{marginLeft: 20, marginTop: 20}} onPress={() => navigation.navigate('Settings')}/>
       </NavContainer>
      
-      <AllOrders orders={orders}/>
+      <AllOrders
+        orders={visibleOrders}
+        onSetStatus={setOrderStatus}
+        updating={updating}
+        emptyMessage={view === "liveOrders" ? "No live orders right now." : "No orders yet."}
+      />
     </DashboardContainer>
   );
 };
@@ -175,8 +158,8 @@ const styles = {
     height: '90%',
     left: '5%',
      backgroundColor: 'rgba(0, 30, 0, 0.9)',
-     padding: '20px',
-     borderRadius: '10px',
+     padding: 20,
+     borderRadius: 10,
      zIndex: 10
   },
   popupContent: {
@@ -205,12 +188,13 @@ const PopupContent = styled.View({
   justifyContent: 'center'
 });
 
-const NavItem = styled.TouchableOpacity({
+const NavItem = styled.TouchableOpacity((props) => ({
   margin: 0,
   border: "1px solid #414660",
   padding: "35px 20px",
   width: "100%",
-});
+  backgroundColor: props.$active ? "#3d5368" : "transparent",
+}));
 
 const NavLabel = styled.Text({
   color: "white",
