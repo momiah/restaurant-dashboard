@@ -10,7 +10,9 @@ const Row = ({ label, value }) => (
   </FieldRow>
 );
 
-const Settings = () => {
+const money = (n) => (n != null && n !== "" ? `£${Number(n).toFixed(2)}` : "");
+
+const Settings = ({ navigation }) => {
   const { restaurant, user, signOutUser } = useAuth();
   const ordering = restaurant?.ordering || {};
   const contact = restaurant?.contact || {};
@@ -30,12 +32,18 @@ const Settings = () => {
       <Row label="Instagram" value={contact.instagram} />
       <Row label="Address" value={address.formatted} />
 
-      <SectionTitle>Ordering</SectionTitle>
+      <SectionHead>
+        <SectionTitle>Ordering</SectionTitle>
+        <EditButton onPress={() => navigation?.navigate("DeliverySettings")} accessibilityRole="button">
+          <EditText>Delivery settings</EditText>
+        </EditButton>
+      </SectionHead>
       <Row label="Order types" value={(ordering.orderTypes || []).join(", ")} />
+      <Row label="Delivery fee" value={money(ordering.deliveryFee)} />
+      <Row label="Free delivery over" value={money(ordering.freeDeliveryThreshold)} />
+      <Row label="Minimum order" value={ordering.minOrder ? money(ordering.minOrder) : "None"} />
       <Row label="Delivery radius (miles)" value={String(ordering.deliveryRadiusMiles ?? "")} />
       <Row label="Postcodes" value={(ordering.allowedPostcodePrefixes || []).join(", ")} />
-      <Row label="Free delivery over" value={ordering.freeDeliveryThreshold != null ? `${ordering.currency || ""} ${ordering.freeDeliveryThreshold}` : ""} />
-      <Row label="Delivery fee" value={ordering.deliveryFee != null ? `${ordering.currency || ""} ${ordering.deliveryFee}` : ""} />
       <Row label="Currency" value={ordering.currency} />
       <Row label="Collection address" value={ordering.collectionAddress} />
 
@@ -44,8 +52,8 @@ const Settings = () => {
       <Row label="Stripe account" value={restaurant?.payments?.stripeAccountId} />
 
       <Note>
-        These values come from this restaurant's record in Firestore. A full in-app
-        editor (identity, theme, menu) is the next dashboard milestone.
+        Change your delivery charges with Delivery settings, and your menu with the
+        menu editor. For anything else here, contact MenuDock.
       </Note>
 
       <SignOutButton onPress={signOutUser}>
@@ -77,6 +85,27 @@ const SectionTitle = styled.Text({
   marginTop: 18,
   marginBottom: 6,
   color: "#2c3e50",
+});
+
+const SectionHead = styled.View({
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginTop: 8,
+});
+
+const EditButton = styled.TouchableOpacity({
+  backgroundColor: "#2c3e50",
+  borderRadius: 8,
+  paddingVertical: 10,
+  paddingHorizontal: 16,
+  minHeight: 44,
+  justifyContent: "center",
+});
+
+const EditText = styled.Text({
+  color: "#ffffff",
+  fontWeight: "bold",
 });
 
 const FieldRow = styled.View({
