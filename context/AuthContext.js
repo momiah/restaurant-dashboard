@@ -2,7 +2,7 @@
 // On sign-in we read owners/{uid} to find the owner's restaurantId, then load that
 // restaurant record. Every screen scopes its data to `restaurantId`, so an owner only
 // ever sees their own restaurant's orders and settings.
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -62,6 +62,14 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
+  // Re-read the restaurant record, e.g. after the owner saves settings.
+  const restaurantId = owner?.restaurantId || null;
+  const reloadRestaurant = useCallback(async () => {
+    if (!restaurantId) return;
+    const snap = await getDoc(doc(db, "restaurants", restaurantId));
+    if (snap.exists()) setRestaurant({ id: snap.id, ...snap.data() });
+  }, [restaurantId]);
+
   const signIn = (email, password) =>
     signInWithEmailAndPassword(auth, email, password);
   const signOutUser = () => signOut(auth);
@@ -72,11 +80,12 @@ export function AuthProvider({ children }) {
         user,
         owner,
         restaurant,
-        restaurantId: owner?.restaurantId || null,
+        restaurantId,
         loading,
         error,
         signIn,
         signOutUser,
+        reloadRestaurant,
       }}
     >
       {children}

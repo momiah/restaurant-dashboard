@@ -5,6 +5,7 @@ import { ThemeProvider } from "styled-components/native";
 import { useState } from "react";
 import Dashboard from "./screens/Dashboard";
 import Settings from "./screens/Settings";
+import DeliverySettings from "./screens/DeliverySettings";
 import MenuEditor from "./screens/MenuEditor";
 import MenuImport from "./screens/MenuImport";
 import Login from "./screens/Login";
@@ -68,6 +69,11 @@ function AuthedApp() {
             name="Settings"
             component={Settings}
             options={{ headerShown: true }}
+          />
+          <Stack.Screen
+            name="DeliverySettings"
+            component={DeliverySettings}
+            options={{ headerShown: true, title: "Delivery Settings" }}
           />
         </Stack.Navigator>
       </NavigationContainer>
